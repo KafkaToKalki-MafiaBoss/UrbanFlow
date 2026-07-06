@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Data & weights (large files, mostly should not go to git)
+detection/data/raw/*
+detection/data/processed/*
+!detection/data/raw/.gitkeep
+!detection/data/processed/.gitkeep
+*.pt
+*.pth
+
+# SUMO
+*.xml.bak
+
+# Env
+.env
+
+# OS
+.DS_Store
