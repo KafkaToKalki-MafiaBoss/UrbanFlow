@@ -1,6 +1,14 @@
 from ultralytics import YOLO
 import cv2
 import os
+from dotenv import load_dotenv
+from supabase import create_client
+
+load_dotenv()  # reads variables from your .env file
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --- Paths ---
 VIDEO_PATH = 'data/raw/sample_traffic.mp4'
@@ -63,8 +71,9 @@ while cap.isOpened():
     if boxes.id is not None:
         ids = boxes.id.int().tolist()
         xyxy = boxes.xyxy.tolist()
+        classes = boxes.cls.int().tolist()  # class ID for each detected box
 
-        for track_id, box in zip(ids, xyxy):
+        for track_id, box, cls_id in zip(ids, xyxy, classes):
             x1, y1, x2, y2 = box
             center_x = (x1 + x2) / 2
             center_y = (y1 + y2) / 2
@@ -73,6 +82,15 @@ while cap.isOpened():
                 counted_ids.add(track_id)
                 lane = get_lane(center_x, boundaries)
                 lane_counts[lane] += 1
+
+                vehicle_type = model.names[cls_id]  # e.g. "car", "bus", "motorcycle"
+
+                # Log this individual vehicle event to the database
+                supabase.table("detection_events").insert({
+                    "lane_id": lane,
+                    "vehicle_id": track_id,
+                    "vehicle_type": vehicle_type
+                }).execute()
 
     annotated_frame = results[0].plot()
     cv2.line(annotated_frame, (0, LINE_Y), (frame_width, LINE_Y), (0, 255, 255), 2)
@@ -91,6 +109,14 @@ while cap.isOpened():
 
     if frame_count % frames_per_window == 0:
         print(f"[Window ending at frame {frame_count}] Lane counts: {lane_counts}")
+
+        # Log the aggregated window snapshot to the database
+        supabase.table("lane_counts_window").insert({
+            "window_end_frame": frame_count,
+            "lane_1_count": lane_counts[1],
+            "lane_2_count": lane_counts[2],
+            "lane_3_count": lane_counts[3]
+        }).execute()
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
