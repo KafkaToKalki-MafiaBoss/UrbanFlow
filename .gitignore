@@ -7,6 +7,9 @@ venv/
 # Data & weights (large files, mostly should not go to git)
 detection/data/raw/*
 detection/data/processed/*
+detection/data/india_roads/*
+detection/data/india_roads_labeled/*
+detection/data/india_roads_final/*
 !detection/data/raw/.gitkeep
 !detection/data/processed/.gitkeep
 *.pt
@@ -20,3 +23,4 @@ detection/data/processed/*
 
 # OS
 .DS_Store
+runs/
