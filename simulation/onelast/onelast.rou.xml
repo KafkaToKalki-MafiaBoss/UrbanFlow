@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2026-07-15T07:07:56.689232+05:30 by Eclipse SUMO netedit 1.27.1 -->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    <!-- Vehicles, persons and containers (sorted by depart) -->
+
+    <trip id="t_0"
+          depart="0.00"
+          from="E2"
+          to="-E0"/>
+
+    <trip id="t_1"
+          type="DEFAULT_TAXITYPE"
+          depart="0.00"
+          color="131,0,255"
+          from="E2"
+          to="E3"/>
+
+    <trip id="t_2"
+          type="DEFAULT_TAXITYPE"
+          depart="0.00"
+          color="128,0,0"
+          from="-E3"
+          to="E1"/>
+
+    <trip id="t_3"
+          type="DEFAULT_TAXITYPE"
+          depart="0.00"
+          color="128,0,0"
+          from="-E3"
+          to="-E2"/>
+
+    <flow id="f_0"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00"
+          end="3600.00"
+          perHour="500.00"
+          color="49,49,1"
+          from="-E1"
+          to="-E0"/>
+
+    <flow id="f_1"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00"
+          end="3600.00"
+          perHour="349.85"
+          color="0,34,49"
+          from="-E1"
+          to="E3"/>
+
+    <flow id="f_2"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00"
+          end="3600.00"
+          perHour="100.00"
+          color="0,9,49"
+          from="-E3"
+          to="-E2"/>
+
+    <flow id="f_3"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00"
+          end="3600.00"
+          perHour="50.00"
+          color="0,9,49"
+          from="E0"
+          to="E1"/>
+
+    <flow id="f_4"
+          type="DEFAULT_BIKETYPE"
+          begin="0.00"
+          end="3600.00"
+          perHour="200.00"
+          color="magenta"
+          from="E0"
+          to="E1"/>
+
+</routes>
