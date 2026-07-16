@@ -78,10 +78,11 @@ def collect_baseline_data(step):
         # Get queue lengths for each approach
         # Queue length = number of vehicles that are halting (stopped waiting)
         try:
+            # West=E0, East=-E1, South=E2, North=-E3 (incoming edges; E1/E3 are outgoing)
             E0_queue = traci.edge.getLastStepHaltingNumber("E0")
-            E1_queue = traci.edge.getLastStepHaltingNumber("E1")
+            E1_queue = traci.edge.getLastStepHaltingNumber("-E1")
             E2_queue = traci.edge.getLastStepHaltingNumber("E2")
-            E3_queue = traci.edge.getLastStepHaltingNumber("E3")
+            E3_queue = traci.edge.getLastStepHaltingNumber("-E3")
         except:
             # If edges don't work, try alternative names
             E0_queue = 0
