@@ -4,13 +4,13 @@ import os
 from dotenv import load_dotenv
 from supabase import create_client
 
-load_dotenv()  # reads variables from your .env file
+load_dotenv()  # reads variables from .env file
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- Paths ---
+# Paths
 VIDEO_PATH = 'data/raw/sample_traffic.mp4'
 WEIGHTS_PATH = 'data/weights/yolov8s.pt'
 
@@ -25,10 +25,10 @@ if not cap.isOpened():
 cv2.namedWindow("Multi-lane Counting - Press 'q' to quit", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Multi-lane Counting - Press 'q' to quit", 960, 540)
 
-# --- Counting line setup ---
+# Counting line setup
 LINE_Y = 650
 
-# --- Lane setup ---
+# Lane setup
 NUM_LANES = 3
 ROAD_START_PCT = 0.12  # % of frame width where real road begins (adjust this to move lines)
 
@@ -62,7 +62,7 @@ while cap.isOpened():
         break
 
     frame_count += 1
-    frame_width = frame.shape[1]  # actual width of THIS frame, reliable
+    frame_width = frame.shape[1]  # actual width of THIS frame
     boundaries = get_lane_boundaries(frame_width)
 
     results = model.track(frame, persist=True, conf=0.15)
