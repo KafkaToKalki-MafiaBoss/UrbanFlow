@@ -12,6 +12,8 @@ detection/data/india_roads_labeled/*
 detection/data/india_roads_final/*
 !detection/data/raw/.gitkeep
 !detection/data/processed/.gitkeep
+rl_agent/models/*
+!rl_agent/models/.gitkeep
 *.pt
 *.pth
 
