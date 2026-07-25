@@ -49,10 +49,10 @@ os.makedirs(checkpoint_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
 
 
-checkpoint_callback = CheckpointCallback(save_freq=10_000, save_path=checkpoint_dir, name_prefix="ppo_onelast")
+checkpoint_callback = CheckpointCallback(save_freq=25_000, save_path=checkpoint_dir, name_prefix="ppo_onelast")
 model = PPO("MlpPolicy", env, verbose=1, tensorboard_log=log_dir)
-model.learn(total_timesteps=20_000, callback=checkpoint_callback)
-model.save(os.path.join(model_dir, "ppo_onelast_smoketest"))
+model.learn(total_timesteps=300_000, callback=checkpoint_callback)
+model.save(os.path.join(model_dir, "ppo_onelast_v1"))
 
 # ts_id = env.ts_ids[0]  # "J1"
 # print("Controlled TLS ids:", env.ts_ids)
@@ -83,12 +83,12 @@ model.save(os.path.join(model_dir, "ppo_onelast_smoketest"))
 #         f"obs[N,S,E,W]={obs}, (sim_step={env.sim_step:.0f}s)"
 #     )
 
-obs, info = env.reset()
-for _ in range(100):
-    action, _states = model.predict(obs, deterministic=True)
-    obs, reward, terminated, truncated, info = env.step(action)
-    print(f"action={action}, reward={reward:.3f}, obs[N,S,E,W]={obs}")
-    if terminated or truncated:
-        break
+# obs, info = env.reset()
+# for _ in range(100):
+#     action, _states = model.predict(obs, deterministic=True)
+#     obs, reward, terminated, truncated, info = env.step(action)
+#     print(f"action={action}, reward={reward:.3f}, obs[N,S,E,W]={obs}")
+#     if terminated or truncated:
+#         break
 
 env.close()
