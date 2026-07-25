@@ -16,7 +16,12 @@ rl_agent/models/*
 !rl_agent/models/.gitkeep
 *.pt
 *.pth
+# RL training artifacts
+rl_agent/checkpoints/
+rl_agent/logs/
 
+# Trained model artifacts
+rl_agent/models/*.zip
 # SUMO
 *.xml.bak
 
