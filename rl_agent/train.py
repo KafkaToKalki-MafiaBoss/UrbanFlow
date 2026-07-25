@@ -1,5 +1,6 @@
 import os
 import sys
+import traci
 
 # Fix A5: do NOT hardcode SUMO_HOME (the old line overwrote the valid Windows
 # path with a Linux one, and did so after sumo_rl was already imported).
@@ -19,11 +20,11 @@ print("SUMO_HOME:", os.environ.get("SUMO_HOME"))
 print("sumo_rl:", sumo_rl.__file__)
 
 # Fix (minor #3): resolve paths relative to this script, not the launch cwd.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 env = SumoEnvironment(
-    net_file=os.path.join(BASE_DIR, "simulation", "onelast", "onelast.net.xml"),
-    route_file=os.path.join(BASE_DIR, "simulation", "onelast", "onelast.rou.xml"),
+    net_file=os.path.join(PROJECT_ROOT, "simulation", "onelast", "onelast.net.xml"),
+    route_file=os.path.join(PROJECT_ROOT, "simulation", "onelast", "onelast.rou.xml"),
     use_gui=True,
     num_seconds=1000,
     single_agent=True,
@@ -42,23 +43,33 @@ print("Action space:", env.action_space)  # Discrete(2): 0 = N+S green, 1 = E+W 
 
 obs, info = env.reset()
 
-for _ in range(20):
-    action = env.action_space.sample()
-    obs, reward, terminated, truncated, info = env.step(action)
+# for _ in range(100):
+#     action = env.action_space.sample()
+#     obs, reward, terminated, truncated, info = env.step(action)
 
-    # Fix A1 + A4: sumo-rl switches lights via setRedYellowGreenState(), so
-    # getPhase() never changes. Read the live state string / sumo-rl's own
-    # green_phase instead, and always go through env.sumo (labeled connection),
-    # never the bare `traci` module.
-    state_str = env.sumo.trafficlight.getRedYellowGreenState(ts_id)
-    green_phase = env.traffic_signals[ts_id].green_phase
+#     # Fix A1 + A4: sumo-rl switches lights via setRedYellowGreenState(), so
+#     # getPhase() never changes. Read the live state string / sumo-rl's own
+#     # green_phase instead, and always go through env.sumo (labeled connection),
+#     # never the bare `traci` module.
+#     state_str = env.sumo.trafficlight.getRedYellowGreenState(ts_id)
+#     green_phase = env.traffic_signals[ts_id].green_phase
 
-    print(
-        f"Action={action}, GreenPhase={green_phase}, State={state_str}"
-    )
-    print(
-        f"action={action}, reward={reward:.3f}, "
-        f"obs[N,S,E,W]={obs}, (sim_step={env.sim_step:.0f}s)"
-    )
+#     print(traci.edge.getLastStepVehicleNumber("E2"))  # DEBUG: test traci import for South Lane
+
+
+#     print(
+#         f"Action={action}, GreenPhase={green_phase}, State={state_str}"
+#     )
+#     print(
+#         f"action={action}, reward={reward:.3f}, "
+#         f"obs[N,S,E,W]={obs}, (sim_step={env.sim_step:.0f}s)"
+#     )
+print("S-edge mapping check")
+for _ in range(50):
+    traci.simulationStep()
+    n = traci.edge.getLastStepVehicleNumber("E2")
+    h = traci.edge.getLastStepHaltingNumber("E2")
+    if n > 0:
+        print(f"vehicles={n}, halting={h}, t={traci.simulation.getTime()}")
 
 env.close()
