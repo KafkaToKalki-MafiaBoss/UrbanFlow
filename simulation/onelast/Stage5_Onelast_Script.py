@@ -23,13 +23,22 @@ import traci
 # Step 3: Define SUMO configuration for onelast network
 import os
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
+# Directory containing this script: BASE_DIR/rl_model
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Project root: BASE_DIR
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# SUMO simulation files
+SUMO_DIR = os.path.join(BASE_DIR, "onelast")
 
 SUMO_CONFIG = [
-    "sumo-gui",
-    "-c", os.path.join(current_dir, "onelast.sumocfg"),
+    "sumo",
+    "-c", os.path.join(SUMO_DIR, "onelast.sumocfg"),
     "--step-length", "0.05",
-    "--delay", "100"
+    "--delay", "100",
+    "--start",
+    "--quit-on-end",
 ]
 
 # Step 4: Initialize database
@@ -72,23 +81,18 @@ def collect_baseline_data(step):
     """Collect queue length, vehicle count, and waiting time data"""
     
     try:
-        # Get simulation time (convert milliseconds to seconds)
-        sim_time = traci.simulation.getCurrentTime() / 1000
+        # Get simulation time in seconds (getCurrentTime() is deprecated)
+        sim_time = traci.simulation.getTime()
         
         # Get queue lengths for each approach
         # Queue length = number of vehicles that are halting (stopped waiting)
-        try:
-            # West=E0, East=-E1, South=E2, North=-E3 (incoming edges; E1/E3 are outgoing)
-            E0_queue = traci.edge.getLastStepHaltingNumber("E0")
-            E1_queue = traci.edge.getLastStepHaltingNumber("-E1")
-            E2_queue = traci.edge.getLastStepHaltingNumber("E2")
-            E3_queue = traci.edge.getLastStepHaltingNumber("-E3")
-        except:
-            # If edges don't work, try alternative names
-            E0_queue = 0
-            E1_queue = 0
-            E2_queue = 0
-            E3_queue = 0
+        # Fix B2: no bare try/except here. A wrong edge ID must raise loudly,
+        # not silently zero every queue for the whole run.
+        # West=E0, East=-E1, South=E2, North=-E3 (incoming edges; E1/E3 are outgoing)
+        E0_queue = traci.edge.getLastStepHaltingNumber("E0")
+        E1_queue = traci.edge.getLastStepHaltingNumber("-E1")
+        E2_queue = traci.edge.getLastStepHaltingNumber("E2")
+        E3_queue = traci.edge.getLastStepHaltingNumber("-E3")
         
         # Get total vehicles in network
         vehicle_list = traci.vehicle.getIDList()
@@ -226,10 +230,12 @@ def calculate_statistics():
         
         print(f"\nTraffic Signal Configuration (4-PHASE):")
         print(f"  Total Cycle Time: 90 seconds")
-        print(f"  Phase 1 (E0 + E1 Green): 42s")
-        print(f"  Phase 2 (Yellow): 3s")
-        print(f"  Phase 3 (E2 + E3 Green): 42s")
-        print(f"  Phase 4 (Yellow): 3s")
+        # Fix A3: labels corrected — in onelast.net.xml phase 0 is
+        # North+South green (E2 / -E3) and phase 2 is East+West green (E0 / -E1)
+        print(f"  Phase 0 (North+South green, E2/-E3): 42s")
+        print(f"  Phase 1 (Yellow): 3s")
+        print(f"  Phase 2 (East+West green, E0/-E1): 42s")
+        print(f"  Phase 3 (Yellow): 3s")
         
         print("\n" + "="*90)
         print("✅ Stage 5 baseline data collection complete!")
@@ -269,8 +275,8 @@ if __name__ == "__main__":
         print("-" * 90)
         baseline_data = []
         step = 0
-        
-        while traci.simulation.getMinExpectedNumber() > 0:
+        MAX_STEPS = 72000  # 1 hour at 0.05s step length
+        while traci.simulation.getMinExpectedNumber() > 0 and step < MAX_STEPS:
             traci.simulationStep()
             
             # Collect data at each step
@@ -279,7 +285,8 @@ if __name__ == "__main__":
                 baseline_data.append(data)
             
             step += 1
-        
+        if step >= MAX_STEPS:
+            print(f"\n⚠️ Simulation reached maximum steps ({MAX_STEPS}) before all vehicles exited")
         print("-" * 90)
         
         # Close TraCI connection

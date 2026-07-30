@@ -116,7 +116,16 @@
         <lane id="E3_1" index="1" speed="13.89" length="24.44" shape="-8.75,28.13 -9.51,52.56"/>
     </edge>
 
-    <tlLogic id="J1" type="static" programID="0" offset="0">
+    <!-- <phase state="rrrrGGGgrrrrGGGg"/>
+         <phase state="rrrryyyyrrrryyyy"/>
+         <phase state="GGGgrrrrGGGgrrrr"/>
+         <phase state="yyyyrrrryyyyrrrr"/>
+         <phase state="rrGGrrrrrrGGrrrr"/>
+         <phase state="rryyrrrrrryyrrrr"/>
+         <phase state="GGrrrrGGrrrrrrrr"/>
+         <phase state="yyrrrryyrrrrrrrr"/>   -->
+
+   <!-- <tlLogic id="J1" type="static" programID="0" offset="0">
         <phase state="rrrrGGGgrrrrGGGg"/>
         <phase state="rrrryyyyrrrryyyy"/>
         <phase state="GGGgrrrrGGGgrrrr"/>
@@ -125,6 +134,17 @@
         <phase state="rryyrrrrrryyrrrr"/>
         <phase state="GGrrrrGGrrrrrrrr"/>
         <phase state="yyrrrryyrrrrrrrr"/>
+    </tlLogic>  -->
+
+    <tlLogic id="J1" type="static" programID="0" offset="0">
+    <phase duration="42" state="rrrrGGGgrrrrGGGg"/>
+    <phase duration="3"  state="rrrryyyyrrrryyyy"/>
+    <phase duration="42" state="GGGgrrrrGGGgrrrr"/>
+    <phase duration="3"  state="yyyyrrrryyyyrrrr"/>
+    <phase duration="15" state="rrGGrrrrrrGGrrrr"/>
+    <phase duration="3"  state="rryyrrrrrryyrrrr"/>
+    <phase duration="15" state="GGrrrrGGrrrrrrrr"/>
+    <phase duration="3"  state="yyrrrryyrrrrrrrr"/>
     </tlLogic>
 
     <junction id="J0" type="dead_end" x="-79.08" y="17.97" incLanes="-E0_0 -E0_1" intLanes="" shape="-79.08,17.97 -79.03,24.37 -79.08,17.97"/>
