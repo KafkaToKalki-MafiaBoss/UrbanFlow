@@ -1,3 +1,4 @@
+# Stage5_onelast_Script.py
 # Stage 5: SUMO Baseline Data Collection Script
 # Network: onelast.net.xml (4-phase traffic signal)
 # Routes: onelast.rou.xml (multi-directional traffic flows)
@@ -32,6 +33,8 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 # SUMO simulation files
 SUMO_DIR = os.path.join(BASE_DIR, "onelast")
 
+DB_PATH = os.path.join(SUMO_DIR, "baseline_results.db")
+
 SUMO_CONFIG = [
     "sumo",
     "-c", os.path.join(SUMO_DIR, "onelast.sumocfg"),
@@ -45,7 +48,7 @@ SUMO_CONFIG = [
 def initialize_database():
     """Create database and table for baseline results"""
     try:
-        conn = sqlite3.connect('baseline_results.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         # Drop table if exists (fresh start)
@@ -135,7 +138,7 @@ def collect_baseline_data(step):
 def save_to_database(data_list):
     """Save collected data to SQLite database"""
     try:
-        conn = sqlite3.connect('baseline_results.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         count = 0
@@ -164,7 +167,7 @@ def save_to_database(data_list):
 def calculate_statistics():
     """Calculate and display baseline statistics"""
     try:
-        conn = sqlite3.connect('baseline_results.db')
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
         # Get total records
@@ -239,7 +242,7 @@ def calculate_statistics():
         
         print("\n" + "="*90)
         print("✅ Stage 5 baseline data collection complete!")
-        print(f"Results saved in: baseline_results.db")
+        print(f"Results saved in: {DB_PATH}")
         print("="*90 + "\n")
         
         return True
