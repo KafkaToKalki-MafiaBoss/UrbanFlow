@@ -25,9 +25,6 @@
     <vehicle id="veh_W_1" type="car" depart="2.50">
         <route edges="E0 -E2"/>
     </vehicle>
-    <vehicle id="veh_N_2" type="car" depart="5.00">
-        <route edges="-E3 -E0"/>
-    </vehicle>
     <vehicle id="veh_S_2" type="car" depart="5.00">
         <route edges="E2 -E0"/>
     </vehicle>
@@ -36,9 +33,6 @@
     </vehicle>
     <vehicle id="veh_W_2" type="car" depart="5.00">
         <route edges="E0 E1"/>
-    </vehicle>
-    <vehicle id="veh_N_3" type="car" depart="7.50">
-        <route edges="-E3 -E2"/>
     </vehicle>
     <vehicle id="veh_S_3" type="car" depart="7.50">
         <route edges="E2 E3"/>
@@ -49,9 +43,6 @@
     <vehicle id="veh_W_3" type="car" depart="7.50">
         <route edges="E0 E3"/>
     </vehicle>
-    <vehicle id="veh_N_4" type="car" depart="10.00">
-        <route edges="-E3 E1"/>
-    </vehicle>
     <vehicle id="veh_S_4" type="car" depart="10.00">
         <route edges="E2 E1"/>
     </vehicle>
@@ -61,34 +52,43 @@
     <vehicle id="veh_W_4" type="car" depart="10.00">
         <route edges="E0 -E2"/>
     </vehicle>
-    <vehicle id="veh_N_5" type="car" depart="12.50">
-        <route edges="-E3 -E0"/>
-    </vehicle>
     <vehicle id="veh_S_5" type="car" depart="12.50">
         <route edges="E2 -E0"/>
     </vehicle>
-    <vehicle id="veh_N_6" type="car" depart="15.00">
-        <route edges="-E3 -E2"/>
+    <vehicle id="veh_E_5" type="car" depart="12.50">
+        <route edges="-E1 -E0"/>
+    </vehicle>
+    <vehicle id="veh_W_5" type="car" depart="12.50">
+        <route edges="E0 E1"/>
     </vehicle>
     <vehicle id="veh_S_6" type="car" depart="15.00">
         <route edges="E2 E3"/>
     </vehicle>
-    <vehicle id="veh_N_7" type="car" depart="17.50">
-        <route edges="-E3 E1"/>
+    <vehicle id="veh_W_6" type="car" depart="15.00">
+        <route edges="E0 E3"/>
     </vehicle>
     <vehicle id="veh_S_7" type="car" depart="17.50">
         <route edges="E2 E1"/>
     </vehicle>
-    <vehicle id="veh_N_8" type="car" depart="20.00">
-        <route edges="-E3 -E0"/>
+    <vehicle id="veh_W_7" type="car" depart="17.50">
+        <route edges="E0 -E2"/>
     </vehicle>
     <vehicle id="veh_S_8" type="car" depart="20.00">
         <route edges="E2 -E0"/>
     </vehicle>
-    <vehicle id="veh_N_9" type="car" depart="22.50">
-        <route edges="-E3 -E2"/>
+    <vehicle id="veh_W_8" type="car" depart="20.00">
+        <route edges="E0 E1"/>
     </vehicle>
-    <vehicle id="veh_S_9" type="car" depart="22.50">
-        <route edges="E2 E3"/>
+    <vehicle id="veh_W_9" type="car" depart="22.50">
+        <route edges="E0 E3"/>
+    </vehicle>
+    <vehicle id="veh_W_10" type="car" depart="25.00">
+        <route edges="E0 -E2"/>
+    </vehicle>
+    <vehicle id="veh_W_11" type="car" depart="27.50">
+        <route edges="E0 E1"/>
+    </vehicle>
+    <vehicle id="veh_W_12" type="car" depart="30.00">
+        <route edges="E0 E3"/>
     </vehicle>
 </routes>

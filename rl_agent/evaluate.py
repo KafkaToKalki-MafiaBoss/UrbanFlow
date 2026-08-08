@@ -68,7 +68,7 @@ def load_fixed_timer_summary_stats():
         "avg_waiting_vehicles": avg_waiting,
     }
 
-def run_rl_episode(model_path):
+def run_rl_episode(model_path, label="rl_agent"):
     env = SumoEnvironment(
         net_file=os.path.join(PROJECT_ROOT, "simulation", "onelast", "onelast.net.xml"),
         route_file=os.path.join(PROJECT_ROOT, "simulation", "onelast", "onelast.rou.xml"),
@@ -80,6 +80,14 @@ def run_rl_episode(model_path):
         yellow_time=2,
         min_green=5,
     )
+    # No env passed to PPO.load here -- matches the existing pattern used
+    # elsewhere in the project (clearance_metrics.py, diagnose script).
+    # This means a model/env action-space mismatch would NOT raise here
+    # (it only raises when env= is explicitly passed to .load()). v2 was
+    # trained fresh against this exact env config, so it's a correct
+    # match -- but if this model_path is ever swapped for a different
+    # file, worth doing `PPO.load(model_path, env=env)` once by hand to
+    # confirm the spaces still line up before trusting the results.
     model = PPO.load(model_path)
 
     obs, info = env.reset()
@@ -95,7 +103,7 @@ def run_rl_episode(model_path):
 
     queue_history = np.array(queue_history)  # shape: (steps, 4) -> [N,S,E,W]
     return {
-        "label": "rl_agent",
+        "label": label,
         "avg_queue_per_approach": queue_history.mean(axis=0),
         "avg_queue_overall": queue_history.mean(),
         "peak_queue": queue_history.max(),
@@ -104,16 +112,16 @@ def run_rl_episode(model_path):
 
 def print_comparison(fixed, rl, fixed_summary):
     print("\n" + "=" * 70)
-    print("BASELINE vs RL AGENT — ONELAST NETWORK")
+    print(f"BASELINE vs {rl['label'].upper()} — ONELAST NETWORK")
     print("=" * 70)
 
-    print(f"\n{'Metric':<30}{'Fixed-Timer':>18}{'RL Agent':>18}")
+    print(f"\n{'Metric':<30}{'Fixed-Timer':>18}{rl['label']:>18}")
     print("-" * 70)
     print(f"{'Avg queue (overall)':<30}{fixed['avg_queue_overall']:>18.2f}{rl['avg_queue_overall']:>18.2f}")
     print(f"{'Peak queue (bucketed avg)':<30}{fixed['peak_queue']:>18.2f}{rl['peak_queue']:>18.2f}")
 
     improvement = (fixed["avg_queue_overall"] - rl["avg_queue_overall"]) / fixed["avg_queue_overall"] * 100
-    print(f"\nRL improvement over fixed-timer: {improvement:.1f}% reduction in avg queue")
+    print(f"\n{rl['label']} improvement over fixed-timer: {improvement:.1f}% reduction in avg queue")
 
     print(f"\n--- Fixed-Timer Baseline: True Summary Stats (unbucketed) ---")
     print(f"  True peak queue (raw vehicle count): {fixed_summary['peak_queue_raw']}")
@@ -124,7 +132,13 @@ def print_comparison(fixed, rl, fixed_summary):
 if __name__ == "__main__":
     fixed_result = load_fixed_timer_baseline()
     fixed_summary = load_fixed_timer_summary_stats()
+    # Points at v2 (correct Discrete(4) action space, trained with the
+    # clearance curriculum). v1.zip results from earlier in the project
+    # are NOT comparable to this run -- different action space entirely
+    # (Discrete(2) vs Discrete(4)), so don't place old and new numbers
+    # side by side without noting that explicitly.
     rl_result = run_rl_episode(
-        os.path.join(PROJECT_ROOT, "rl_agent", "models", "ppo_onelast_v1.zip")
+        os.path.join(PROJECT_ROOT, "rl_agent", "models", "ppo_onelast_v2.zip"),
+        label="rl_agent_v2",
     )
     print_comparison(fixed_result, rl_result, fixed_summary)

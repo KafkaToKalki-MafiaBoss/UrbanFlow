@@ -8,16 +8,30 @@ as approach-load imbalance grows?" rather than relying on a single
 balanced 10/10/5/5 data point.
 
 Run from simulation/onelast/ (or adjust --net path):
-    python run_clearance_batch.py --net onelast.net.xml --model ../../rl_agent/models/ppo_onelast_v1.zip
+    python run_clearance_batch.py --net onelast.net.xml --model ../../rl_agent/models/ppo_onelast_v2.zip
+
+NOTE: v2 replaces v1 as the default model here. v1 was later discovered
+to have been trained with an accidentally-restricted Discrete(2) action
+space (see check_action_space.py / diagnose_rl_gridlock.py findings),
+while the real environment is Discrete(4). v2 is a fresh model trained
+correctly against Discrete(4), plus a clearance curriculum targeting
+the starvation gridlock found in the v1 batch run. Results from this
+run are NOT directly comparable to the original v1 CSV -- different
+action space entirely -- but are directly comparable to each other
+across scenarios, and are the correct numbers to report going forward.
 
 Outputs:
-    clearance_batch_results.csv  -- one row per scenario, both controllers
+    clearance_batch_results_v2.csv  -- one row per scenario, both controllers
 """
 
 import argparse
 import csv
 import os
 import sys
+
+# Add the project root to the Python path
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.append(PROJECT_ROOT)
 
 from generate_scenario import generate_route_file
 from clearance_metrics import run_fixed_timer_clearance, run_rl_clearance
@@ -79,6 +93,8 @@ def run_batch(net_path: str, model_path: str, out_csv: str):
         try:
             rl_result = run_rl_clearance(net_path, rou_path, model_path)
         except Exception as ex:
+            import traceback
+            traceback.print_exc()
             print(f"  RL agent FAILED: {ex}")
             rl_result = {"clearance_time": None, "steps": None, "cleared": False}
 
@@ -141,7 +157,7 @@ def run_batch(net_path: str, model_path: str, out_csv: str):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--net", default="onelast.net.xml")
-    p.add_argument("--model", default="../../rl_agent/models/ppo_onelast_v1.zip")
-    p.add_argument("--out", default="clearance_batch_results.csv")
+    p.add_argument("--model", default="../../rl_agent/models/ppo_onelast_v2.zip")
+    p.add_argument("--out", default="clearance_batch_results_v2.csv")
     args = p.parse_args()
     run_batch(args.net, args.model, args.out)

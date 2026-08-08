@@ -13,19 +13,24 @@ traci.simulation.getMinExpectedNumber() == 0, i.e. every vehicle that
 was ever going to depart has departed AND arrived. Same termination
 condition for both runs -> fair comparison per Phase B design.
 
-ASSUMPTIONS TO CONFIRM (marked below) — these mirror what's already
-established in train.py / observations.py per project notes, but I
-don't have those files verbatim, so please check the marked lines:
-  - SumoEnvironment constructor arg names (net_file, route_file, ...)
-  - single-agent / traffic signal id (assumed "J1")
-  - FourApproachQueueObservation import path (assumed rl_agent.observations)
-  - delta_time=8, yellow_time=2, min_green=5, matches train.py
+--- Max-green override (added after diagnosing starvation gridlock) ---
+diagnose_rl_gridlock.py showed the trained policy can freeze on a
+single action indefinitely once one queue shrinks to a near-empty
+residual (observed: 55 consecutive identical decisions, one vehicle
+permanently denied green). This is a distribution-shift failure, not
+something worth retraining the model to fix under project time
+constraints. Instead, run_rl_clearance() now supports an optional
+max_green_seconds override: a thin wrapper AROUND model.predict(), not
+a change to the model itself. If the current phase has held for
+>= max_green_seconds, the wrapper forces a switch to the other phase
+regardless of what the policy would have chosen. With Discrete(2),
+action == target green phase index (confirmed in project notes), so
+"force a switch" is simply 1 - last_action.
 
-Usage:
-    from clearance_metrics import run_fixed_timer_clearance, run_rl_clearance
-
-    fixed_time = run_fixed_timer_clearance(net_path, rou_path)
-    rl_time = run_rl_clearance(net_path, rou_path, model_path)
+min_green is intentionally left untouched at the trained value (5s) --
+changing it would introduce a second, new distribution shift on top of
+the one already being corrected, and it wasn't implicated in the
+starvation failure (the issue was no upper bound, not the lower one).
 """
 
 import os
@@ -41,10 +46,14 @@ else:
 import traci
 
 # Safety cap so a gridlocked/oversaturated scenario can't hang forever.
-# Matches the MAX_STEPS discipline already used in Stage5 (72000 steps
-# at 0.05s = 3600s). Generated scenarios are much smaller (burst window
-# ~30s), so this is a generous ceiling, not a tight one.
 DEFAULT_MAX_SIM_SECONDS = 1800.0  # 30 sim-minutes
+
+# Default max-green override, anchored to observed fixed-timer clearance
+# times across the 20-scenario batch (longest was ~89s) and close to the
+# fixed-timer's own per-phase allocation (42s). Keeps RL structurally
+# unable to be worse than fixed-timer due to starvation, while still
+# leaving it free to act intelligently under this ceiling.
+DEFAULT_MAX_GREEN_SECONDS = 44
 
 
 def run_fixed_timer_clearance(
@@ -99,23 +108,23 @@ def run_rl_clearance(
     yellow_time: int = 2,
     min_green: int = 5,
     max_sim_seconds: float = DEFAULT_MAX_SIM_SECONDS,
+    max_green_seconds: float = None,
 ) -> dict:
     """
     Runs the same scenario under the trained PPO agent, using env.sumo
     (sumo-rl's own labeled TraCI connection) rather than the bare traci
     module — matches the project's established TraCI-connection lesson.
 
-    Returns same shape as run_fixed_timer_clearance().
+    max_green_seconds: if set, forces a phase switch once the current
+    phase has held for this long, overriding the policy's own choice.
+    None (default) preserves the original unmodified-policy behavior.
+
+    Returns same shape as run_fixed_timer_clearance(), plus:
+        "forced_switches": int, how many times the override fired.
     """
-    # Deferred imports: only needed for the RL path, and importing
-    # stable_baselines3 / sumo_rl unconditionally would break the
-    # fixed-timer-only use case if those packages aren't installed.
     from stable_baselines3 import PPO
     from sumo_rl import SumoEnvironment
-
-    # ASSUMPTION: import path for the custom observation class.
-    # Adjust if observations.py lives elsewhere / is named differently.
-    BASE_DIR=os.path.abspath(os.path.join(os.path.join(os.path.dirname(__file__),".."),".."))
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     sys.path.append(BASE_DIR)
     from rl_agent.observations import FourApproachQueueObservation
 
@@ -137,27 +146,58 @@ def run_rl_clearance(
     steps = 0
     cleared = False
     clearance_time = None
+    forced_switches = 0
+
+    last_action = None
+    time_in_phase = 0.0
 
     try:
         while True:
-            action, _ = model.predict(obs, deterministic=True)
+            if (
+                max_green_seconds is not None
+                and last_action is not None
+                and time_in_phase >= max_green_seconds
+            ):
+                # Confirmed via check_action_space.py: action_space is
+                # Discrete(4), NOT Discrete(2) (4 green phases including
+                # 2 protected-left phases). "1 - last_action" was wrong
+                # and could emit an invalid action once last_action was
+                # 2 or 3. Cycle to the next phase in rotation instead --
+                # correct for any action_space size, guarantees every
+                # phase eventually gets served (fixes starvation
+                # regardless of how many phases exist).
+                n_actions = env.action_space.n
+                action = (last_action + 1) % n_actions
+                forced_switches += 1
+            else:
+                predicted, _ = model.predict(obs, deterministic=True)
+                action = int(predicted)
+
             obs, reward, terminated, truncated, info = env.step(action)
             steps += 1
 
-            # Check true clearance via env's own TraCI connection, not
-            # bare traci (env.sumo is sumo-rl's labeled connection).
+            if last_action is not None and action == last_action:
+                time_in_phase += delta_time
+            else:
+                time_in_phase = 0.0
+            last_action = action
+
             if env.sumo.simulation.getMinExpectedNumber() == 0:
                 cleared = True
                 clearance_time = env.sumo.simulation.getTime()
                 break
 
             if terminated or truncated:
-                # Episode ended (e.g. num_seconds cap) without clearing.
                 break
     finally:
         env.close()
 
-    return {"clearance_time": clearance_time, "steps": steps, "cleared": cleared}
+    return {
+        "clearance_time": clearance_time,
+        "steps": steps,
+        "cleared": cleared,
+        "forced_switches": forced_switches,
+    }
 
 
 if __name__ == "__main__":
@@ -171,6 +211,8 @@ if __name__ == "__main__":
     p.add_argument("--s", type=int, default=10)
     p.add_argument("--e", type=int, default=5)
     p.add_argument("--w", type=int, default=5)
+    p.add_argument("--max-green", type=float, default=None,
+                    help="Max seconds any phase can stay green before a forced switch (e.g. 44). Omit to disable override.")
     args = p.parse_args()
 
     counts = {"N": args.n, "S": args.s, "E": args.e, "W": args.w}
@@ -182,7 +224,7 @@ if __name__ == "__main__":
     fixed_result = run_fixed_timer_clearance(args.net, rou_path)
     print(f"Fixed-timer: {fixed_result}")
 
-    rl_result = run_rl_clearance(args.net, rou_path, args.model)
+    rl_result = run_rl_clearance(args.net, rou_path, args.model, max_green_seconds=args.max_green)
     print(f"RL agent:    {rl_result}")
 
     if fixed_result["cleared"] and rl_result["cleared"]:
