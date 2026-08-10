@@ -132,6 +132,7 @@ def run_rl_clearance(
         net_file=net_path,
         route_file=rou_path,
         use_gui=True,
+        additional_sumo_cmd="--delay 150",
         num_seconds=int(max_sim_seconds),
         delta_time=delta_time,
         yellow_time=yellow_time,
