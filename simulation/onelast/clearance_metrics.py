@@ -131,7 +131,7 @@ def run_rl_clearance(
     env = SumoEnvironment(
         net_file=net_path,
         route_file=rou_path,
-        use_gui=False,
+        use_gui=True,
         num_seconds=int(max_sim_seconds),
         delta_time=delta_time,
         yellow_time=yellow_time,
