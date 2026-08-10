@@ -71,6 +71,9 @@ def render_comparison_page():
                     counts,
                     max_green_seconds=DEFAULT_MAX_GREEN_SECONDS,
                 )
+                sys.path.append(os.path.join(PROJECT_ROOT, "db"))
+                from db.logger import log_run
+                log_run(result)
             except Exception as exc:
                 st.error(f"Run failed: {exc}")
                 return
