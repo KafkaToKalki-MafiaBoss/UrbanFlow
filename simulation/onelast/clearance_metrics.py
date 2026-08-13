@@ -173,6 +173,7 @@ def run_rl_clearance(
             else:
                 predicted, _ = model.predict(obs, deterministic=True)
                 action = int(predicted)
+                print(f"[DEBUG] step={steps} obs={obs} action={action}")
 
             obs, reward, terminated, truncated, info = env.step(action)
             steps += 1
@@ -207,7 +208,7 @@ if __name__ == "__main__":
 
     p = argparse.ArgumentParser(description="Phase B manual test: compare clearance time on one generated scenario.")
     p.add_argument("--net", default="onelast.net.xml")
-    p.add_argument("--model", default="rl_agent/models/ppo_onelast_v1.zip")
+    p.add_argument("--model", default="rl_agent/models/ppo_onelast_v2.zip")
     p.add_argument("--n", type=int, default=10)
     p.add_argument("--s", type=int, default=10)
     p.add_argument("--e", type=int, default=5)

@@ -45,7 +45,7 @@ def diagnose(net_path, rou_path, model_path, max_sim_seconds=1800.0,
         single_agent=True,
     )
 
-    model = PPO.load(os.path.join(BASE_DIR, "rl_agent", "models", "ppo_onelast_v1.zip"))
+    model = PPO.load(model_path, env=env)  # type: ignore
     obs, info = env.reset()
 
     print(f"{'decision':>8} {'sim_t':>7} {'action':>6} {'obs (N,S,E,W)':>28} {'waiting':>8}")
@@ -79,8 +79,8 @@ def diagnose(net_path, rou_path, model_path, max_sim_seconds=1800.0,
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--net", default="onelast.net.xml")
-    p.add_argument("--model", default="../../rl_agent/models/ppo_onelast_v1.zip")
+    p.add_argument("--net", default="simulation/onelast/onelast.net.xml")
+    p.add_argument("--model", default="rl_agent/models/ppo_onelast_v3_seed1.zip")
     p.add_argument("--n", type=int, required=True)
     p.add_argument("--s", type=int, required=True)
     p.add_argument("--e", type=int, required=True)
