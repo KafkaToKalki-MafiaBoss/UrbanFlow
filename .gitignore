@@ -19,6 +19,7 @@ rl_agent/models/*
 # RL training artifacts
 rl_agent/checkpoints/
 rl_agent/checkpoints_v3/
+rl_agent/checkpoints_curriculum/
 rl_agent/logs/
 
 # Trained model artifacts

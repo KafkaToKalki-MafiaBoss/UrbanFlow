@@ -1,76 +1,110 @@
-<?xml version="1.0" ?>
-<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
-    <vType id="car" length="5.0" maxSpeed="13.89"/>
-    <vehicle id="veh_N_0" type="car" depart="0.00">
-        <route edges="-E3 -E2"/>
-    </vehicle>
-    <vehicle id="veh_S_0" type="car" depart="0.00">
-        <route edges="E2 E3"/>
-    </vehicle>
-    <vehicle id="veh_E_0" type="car" depart="0.00">
-        <route edges="-E1 E3"/>
-    </vehicle>
-    <vehicle id="veh_W_0" type="car" depart="0.00">
-        <route edges="E0 E3"/>
-    </vehicle>
-    <vehicle id="veh_N_1" type="car" depart="2.50">
-        <route edges="-E3 E1"/>
-    </vehicle>
-    <vehicle id="veh_S_1" type="car" depart="2.50">
-        <route edges="E2 E1"/>
-    </vehicle>
-    <vehicle id="veh_E_1" type="car" depart="2.50">
-        <route edges="-E1 -E2"/>
-    </vehicle>
-    <vehicle id="veh_W_1" type="car" depart="2.50">
-        <route edges="E0 -E2"/>
-    </vehicle>
-    <vehicle id="veh_N_2" type="car" depart="5.00">
-        <route edges="-E3 -E0"/>
-    </vehicle>
-    <vehicle id="veh_S_2" type="car" depart="5.00">
-        <route edges="E2 -E0"/>
-    </vehicle>
-    <vehicle id="veh_E_2" type="car" depart="5.00">
-        <route edges="-E1 -E0"/>
-    </vehicle>
-    <vehicle id="veh_W_2" type="car" depart="5.00">
-        <route edges="E0 E1"/>
-    </vehicle>
-    <vehicle id="veh_N_3" type="car" depart="7.50">
-        <route edges="-E3 -E2"/>
-    </vehicle>
-    <vehicle id="veh_S_3" type="car" depart="7.50">
-        <route edges="E2 E3"/>
-    </vehicle>
-    <vehicle id="veh_E_3" type="car" depart="7.50">
-        <route edges="-E1 E3"/>
-    </vehicle>
-    <vehicle id="veh_W_3" type="car" depart="7.50">
-        <route edges="E0 E3"/>
-    </vehicle>
-    <vehicle id="veh_N_4" type="car" depart="10.00">
-        <route edges="-E3 E1"/>
-    </vehicle>
-    <vehicle id="veh_S_4" type="car" depart="10.00">
-        <route edges="E2 E1"/>
-    </vehicle>
-    <vehicle id="veh_E_4" type="car" depart="10.00">
-        <route edges="-E1 -E2"/>
-    </vehicle>
-    <vehicle id="veh_W_4" type="car" depart="10.00">
-        <route edges="E0 -E2"/>
-    </vehicle>
-    <vehicle id="veh_S_5" type="car" depart="12.50">
-        <route edges="E2 -E0"/>
-    </vehicle>
-    <vehicle id="veh_W_5" type="car" depart="12.50">
-        <route edges="E0 E1"/>
-    </vehicle>
-    <vehicle id="veh_S_6" type="car" depart="15.00">
-        <route edges="E2 E3"/>
-    </vehicle>
-    <vehicle id="veh_S_7" type="car" depart="17.50">
-        <route edges="E2 E1"/>
-    </vehicle>
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- Uniform 4-way traffic demand for onelast.net.xml
+     Each incoming approach (West=E0, East=-E1, South=E2, North=-E3)
+     receives identical total demand (600 veh/hr), split 300/150/150
+     across straight/left/right turns, so no approach is biased. -->
+
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+
+    <!-- ================= WEST approach (incoming: E0) ================= -->
+    <!-- straight: E0 -> E1 (west to east) -->
+    <flow id="f_W_straight"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="300.00"
+          color="49,49,1"
+          from="E0" to="E1"/>
+
+    <!-- left: E0 -> E3 (west to north) -->
+    <flow id="f_W_left"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="49,49,1"
+          from="E0" to="E3"/>
+
+    <!-- right: E0 -> -E2 (west to south) -->
+    <flow id="f_W_right"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="49,49,1"
+          from="E0" to="-E2"/>
+
+
+    <!-- ================= EAST approach (incoming: -E1) ================= -->
+    <!-- straight: -E1 -> -E0 (east to west) -->
+    <flow id="f_E_straight"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="300.00"
+          color="0,34,49"
+          from="-E1" to="-E0"/>
+
+    <!-- left: -E1 -> -E2 (east to south) -->
+    <flow id="f_E_left"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="0,34,49"
+          from="-E1" to="-E2"/>
+
+    <!-- right: -E1 -> E3 (east to north) -->
+    <flow id="f_E_right"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="0,34,49"
+          from="-E1" to="E3"/>
+
+
+    <!-- ================= SOUTH approach (incoming: E2) ================= -->
+    <!-- straight: E2 -> E3 (south to north) -->
+    <flow id="f_S_straight"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="300.00"
+          color="255,128,0"
+          from="E2" to="E3"/>
+
+    <!-- left: E2 -> E1 (south to east) -->
+    <flow id="f_S_left"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="255,128,0"
+          from="E2" to="-E0"/>
+
+    <!-- right: E2 -> -E0 (south to west) -->
+    <flow id="f_S_right"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="255,128,0"
+          from="E2" to="E1"/>
+
+
+    <!-- ================= NORTH approach (incoming: -E3) ================= -->
+    <!-- straight: -E3 -> -E2 (north to south) -->
+    <flow id="f_N_straight"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="300.00"
+          color="128,0,0"
+          from="-E3" to="-E2"/>
+
+    <!-- left: -E3 -> -E0 (north to west) -->
+    <flow id="f_N_left"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="128,0,0"
+          from="-E3" to="E1"/>
+
+    <!-- right: -E3 -> E1 (north to east) -->
+    <flow id="f_N_right"
+          type="DEFAULT_TAXITYPE"
+          begin="0.00" end="3600.00" perHour="150.00"
+          color="128,0,0"
+          from="-E3" to="-E0"/>
+
+
+    <!-- Small bike flow retained from original for vehicle-type diversity -->
+    <flow id="f_bike_W"
+          type="DEFAULT_BIKETYPE"
+          begin="0.00" end="3600.00" perHour="100.00"
+          color="magenta"
+          from="E0" to="E1"/>
+
 </routes>
