@@ -18,6 +18,7 @@ rl_agent/models/*
 *.pth
 # RL training artifacts
 rl_agent/checkpoints/
+rl_agent/checkpoints_v4/
 rl_agent/checkpoints_v3/
 rl_agent/checkpoints_curriculum/
 rl_agent/logs/

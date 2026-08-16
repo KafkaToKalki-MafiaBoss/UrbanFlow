@@ -47,6 +47,7 @@ def run_scenario_comparison(
     net_path: str = DEFAULT_NET_PATH,
     model_path: str = DEFAULT_MODEL_PATH,
     max_green_seconds: float = DEFAULT_MAX_GREEN_SECONDS,
+    show_rl_gui: bool = True
 ) -> dict:
     """
     counts: {"N": int, "S": int, "E": int, "W": int} -- user input
@@ -59,7 +60,7 @@ def run_scenario_comparison(
     try:
         fixed_result = run_fixed_timer_clearance(net_path, rou_path)
         rl_result = run_rl_clearance(
-            net_path, rou_path, model_path, max_green_seconds=max_green_seconds
+            net_path, rou_path, model_path, max_green_seconds=max_green_seconds, show_rl_gui=show_rl_gui
         )
     finally:
         try:

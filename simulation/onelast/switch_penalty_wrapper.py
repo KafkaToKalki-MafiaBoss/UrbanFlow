@@ -52,7 +52,7 @@ class SwitchPenaltyWrapper(gym.Wrapper):
             # when the network was essentially empty -- that's the only
             # case where a switch has no possible benefit.
             max_queue = max(self._last_obs) if self._last_obs is not None else 0.0
-            if max_queue < self.min_queue_threshold:
+            if max_queue <= self.min_queue_threshold:
                 reward -= self.penalty
 
         self._last_action = act

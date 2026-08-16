@@ -138,7 +138,7 @@ if __name__ == "__main__":
     # (Discrete(2) vs Discrete(4)), so don't place old and new numbers
     # side by side without noting that explicitly.
     rl_result = run_rl_episode(
-        os.path.join(PROJECT_ROOT, "rl_agent", "models", "ppo_onelast_v2.zip"),
-        label="rl_agent_v2",
+        os.path.join(PROJECT_ROOT, "rl_agent", "models", "ppo_onelast_v3_seed1.zip"),
+        label="rl_agent_v3_seed1",
     )
     print_comparison(fixed_result, rl_result, fixed_summary)

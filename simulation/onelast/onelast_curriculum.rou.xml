@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- Uniform 4-way traffic demand for onelast.net.xml
+<!-- onelast_curriculum.rou.xml
+Uniform 4-way traffic demand for onelast.net.xml
      Each incoming approach (West=E0, East=-E1, South=E2, North=-E3)
      receives identical total demand (600 veh/hr), split 300/150/150
      across straight/left/right turns, so no approach is biased. -->

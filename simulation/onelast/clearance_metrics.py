@@ -131,7 +131,7 @@ def run_rl_clearance(
     env = SumoEnvironment(
         net_file=net_path,
         route_file=rou_path,
-        use_gui=True,
+        use_gui=False,
         additional_sumo_cmd="--delay 150",
         num_seconds=int(max_sim_seconds),
         delta_time=delta_time,
@@ -207,8 +207,8 @@ if __name__ == "__main__":
     from generate_scenario import generate_route_file
 
     p = argparse.ArgumentParser(description="Phase B manual test: compare clearance time on one generated scenario.")
-    p.add_argument("--net", default="onelast.net.xml")
-    p.add_argument("--model", default="rl_agent/models/ppo_onelast_v2.zip")
+    p.add_argument("--net", default="simulation/onelast/onelast.net.xml")
+    p.add_argument("--model", default="rl_agent/models/ppo_onelast_v3_seed1.zip")
     p.add_argument("--n", type=int, default=10)
     p.add_argument("--s", type=int, default=10)
     p.add_argument("--e", type=int, default=5)

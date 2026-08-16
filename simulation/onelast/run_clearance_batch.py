@@ -91,7 +91,7 @@ def run_batch(net_path: str, model_path: str, out_csv: str):
             fixed_result = {"clearance_time": None, "steps": None, "cleared": False}
 
         try:
-            rl_result = run_rl_clearance(net_path, rou_path, model_path)
+            rl_result = run_rl_clearance(net_path, rou_path, model_path, max_green_seconds=44)
         except Exception as ex:
             import traceback
             traceback.print_exc()
