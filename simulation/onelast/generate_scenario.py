@@ -81,7 +81,7 @@ BURST_WINDOW_SECONDS = 30.0
 BURST_SPACING_SECONDS = 2.5
 
 VEHICLE_TYPE_ID = "car"
-VEHICLE_LENGTH = 5.0
+VEHICLE_LENGTH = 4.3
 VEHICLE_MAX_SPEED = 13.89  # matches onelast.net.xml lane speeds (13.89 m/s)
 
 

@@ -142,9 +142,9 @@
     <phase duration="3"  state="rrrryyyyrrrryyyy"/>
     <phase duration="42" state="GGGgrrrrGGGgrrrr"/>
     <phase duration="3"  state="yyyyrrrryyyyrrrr"/>
-    <phase duration="15" state="rrGGrrrrrrGGrrrr"/>
+    <phase duration="15" state="rrGgrrrrrrGgrrrr"/>
     <phase duration="3"  state="rryyrrrrrryyrrrr"/>
-    <phase duration="15" state="GGrrrrGGrrrrrrrr"/>
+    <phase duration="15" state="gGrrrrGgrrrrrrrr"/>
     <phase duration="3"  state="yyrrrryyrrrrrrrr"/>
     </tlLogic>
 

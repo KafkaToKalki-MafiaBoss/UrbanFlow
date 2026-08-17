@@ -27,6 +27,44 @@ regardless of what the policy would have chosen. With Discrete(2),
 action == target green phase index (confirmed in project notes), so
 "force a switch" is simply 1 - last_action.
 
+--- Force-hold fix (added after diagnosing starvation-through-the-override) ---
+Even with the max_green_seconds override wired in, some scenarios
+(mod_w_only_heavy, severe_w_only, deterministic across all 3 v3 seeds)
+still never cleared. TraCI-level debug (env.sumo.vehicle.getLaneID/
+getWaitingTime/getRoute on every forced switch) showed the stuck
+vehicle was NOT in an internal junction lane and NOT involved in any
+collision/teleport -- it was a normal approach-lane vehicle (e.g.
+veh_W_7 on E0_0, route E0->-E2) legally waiting at a red light, with
+waiting time climbing continuously across many forced switches. Root
+cause: the original override only forced ONE step onto the corrective
+phase before immediately returning control to model.predict() on the
+very next decision. If the policy's own behavior pulls it straight
+back to the phase that starves this vehicle (observed: action=2 right
+after the forced switch), the corrective phase never gets more than a
+single delta_time window (8s, partly eaten by yellow_time overhead) to
+actually clear it. FORCE_HOLD_STEPS makes the override HOLD the
+corrective phase for several consecutive decisions once triggered,
+guaranteeing the starved movement gets a real green window before
+control reverts to the policy. This is still a pure eval/inference-time
+wrapper -- no model or network file changes.
+
+--- Rotation-cursor fix (added after force-hold alone still didn't clear
+    mod_w_only_heavy / severe_w_only) ---
+With force-hold in place, [STUCK] logs showed veh_W_7 (route E0->-E2,
+linkIndex 8, a West-right turn only served by phase 2 / action=1) STILL
+never clearing -- wait time climbed the entire 1800s regardless. Cause:
+the override computed the forced action as (last_action + 1) % n_actions.
+Every time control returned to the policy after a hold, it immediately
+re-picked action=2 (confirmed in the [DEBUG] trace). So every subsequent
+override trigger started from the same last_action=2 and always forced
+(2+1)%4 == 3 -- oscillating between actions 2 and 3 forever, and NEVER
+reaching action=1, the one phase that actually serves this vehicle.
+Fix: track rotation progress with a cursor that is independent of
+last_action / the policy's own choices, so each successive override
+visits a genuinely different phase than the last override did, and
+within at most n_actions trigger cycles every phase (including the one
+the policy keeps avoiding) gets a real, held green window.
+
 min_green is intentionally left untouched at the trained value (5s) --
 changing it would introduce a second, new distribution shift on top of
 the one already being corrected, and it wasn't implicated in the
@@ -53,7 +91,15 @@ DEFAULT_MAX_SIM_SECONDS = 1800.0  # 30 sim-minutes
 # fixed-timer's own per-phase allocation (42s). Keeps RL structurally
 # unable to be worse than fixed-timer due to starvation, while still
 # leaving it free to act intelligently under this ceiling.
-DEFAULT_MAX_GREEN_SECONDS = 44
+DEFAULT_MAX_GREEN_SECONDS = 30
+
+# How many consecutive decisions the override HOLDS the corrective phase
+# for once triggered, before handing control back to the policy. At
+# delta_time=8s, 3 steps ~= 24s of held green (minus yellow overhead),
+# enough for a starved approach-lane vehicle to actually depart instead
+# of getting bumped back onto the phase that stranded it after just one
+# 8s window. Tune upward if a scenario still freezes with this in place.
+FORCE_HOLD_STEPS = 2
 
 
 def run_fixed_timer_clearance(
@@ -109,6 +155,8 @@ def run_rl_clearance(
     min_green: int = 5,
     max_sim_seconds: float = DEFAULT_MAX_SIM_SECONDS,
     max_green_seconds: float = None,
+    force_hold_steps: int = FORCE_HOLD_STEPS,
+    show_rl_gui=True
 ) -> dict:
     """
     Runs the same scenario under the trained PPO agent, using env.sumo
@@ -118,6 +166,11 @@ def run_rl_clearance(
     max_green_seconds: if set, forces a phase switch once the current
     phase has held for this long, overriding the policy's own choice.
     None (default) preserves the original unmodified-policy behavior.
+
+    force_hold_steps: once a forced switch fires, how many consecutive
+    decisions to keep forcing the corrective phase before handing
+    control back to the policy. Set to 1 to restore the old
+    single-step-only behavior.
 
     Returns same shape as run_fixed_timer_clearance(), plus:
         "forced_switches": int, how many times the override fired.
@@ -131,7 +184,7 @@ def run_rl_clearance(
     env = SumoEnvironment(
         net_file=net_path,
         route_file=rou_path,
-        use_gui=False,
+        use_gui=True,
         additional_sumo_cmd="--delay 150",
         num_seconds=int(max_sim_seconds),
         delta_time=delta_time,
@@ -151,10 +204,25 @@ def run_rl_clearance(
 
     last_action = None
     time_in_phase = 0.0
+    force_hold_remaining = 0
+    # Independent of last_action/the policy's own choices -- this is
+    # what makes successive overrides actually progress through every
+    # phase instead of bouncing between whichever two actions the
+    # policy and the old (last_action + 1) % n_actions logic kept
+    # landing on together.
+    rotation_cursor = 0
 
     try:
         while True:
-            if (
+            if force_hold_remaining > 0:
+                # Keep holding the phase the override just switched to,
+                # instead of immediately returning control to the policy.
+                # This is what actually lets a starved vehicle clear --
+                # a single forced step wasn't a long enough green window.
+                action = last_action
+                force_hold_remaining -= 1
+
+            elif (
                 max_green_seconds is not None
                 and last_action is not None
                 and time_in_phase >= max_green_seconds
@@ -163,13 +231,36 @@ def run_rl_clearance(
                 # Discrete(4), NOT Discrete(2) (4 green phases including
                 # 2 protected-left phases). "1 - last_action" was wrong
                 # and could emit an invalid action once last_action was
-                # 2 or 3. Cycle to the next phase in rotation instead --
-                # correct for any action_space size, guarantees every
-                # phase eventually gets served (fixes starvation
-                # regardless of how many phases exist).
+                # 2 or 3.
+                #
+                # Previously cycled via (last_action + 1) % n_actions,
+                # but that resets every time from whatever the policy
+                # picked in between overrides -- if the policy always
+                # re-picks the same action (observed: action=2), every
+                # override computes the same next phase and the true
+                # rotation never progresses past two alternating phases.
+                # rotation_cursor tracks progress independently so each
+                # trigger visits a genuinely new phase, guaranteeing
+                # every phase gets served within n_actions triggers.
                 n_actions = env.action_space.n
-                action = (last_action + 1) % n_actions
+                rotation_cursor = (rotation_cursor + 1) % n_actions
+                action = rotation_cursor
                 forced_switches += 1
+                force_hold_remaining = force_hold_steps - 1
+
+                # Debug: on every forced switch, dump exactly what's
+                # still stuck in the network -- vehicle id, current lane,
+                # route, and waiting time. This bypasses SUMO's own
+                # collision/teleport detector entirely (which stays
+                # silent for a vehicle correctly waiting at a red light)
+                # and tells us directly whether it's a routing dead-end
+                # vs. a lane-geometry block.
+                for veh_id in env.sumo.vehicle.getIDList():
+                     lane = env.sumo.vehicle.getLaneID(veh_id)
+                     wait = env.sumo.vehicle.getWaitingTime(veh_id)
+                     route = env.sumo.vehicle.getRoute(veh_id)
+                     print(f"[STUCK] veh={veh_id} lane={lane} wait={wait:.1f}s route={route}")
+
             else:
                 predicted, _ = model.predict(obs, deterministic=True)
                 action = int(predicted)
@@ -215,6 +306,8 @@ if __name__ == "__main__":
     p.add_argument("--w", type=int, default=5)
     p.add_argument("--max-green", type=float, default=None,
                     help="Max seconds any phase can stay green before a forced switch (e.g. 44). Omit to disable override.")
+    p.add_argument("--force-hold-steps", type=int, default=FORCE_HOLD_STEPS,
+                    help="How many consecutive decisions to hold the corrective phase once a forced switch fires.")
     args = p.parse_args()
 
     counts = {"N": args.n, "S": args.s, "E": args.e, "W": args.w}
@@ -226,7 +319,11 @@ if __name__ == "__main__":
     fixed_result = run_fixed_timer_clearance(args.net, rou_path)
     print(f"Fixed-timer: {fixed_result}")
 
-    rl_result = run_rl_clearance(args.net, rou_path, args.model, max_green_seconds=args.max_green)
+    rl_result = run_rl_clearance(
+        args.net, rou_path, args.model,
+        max_green_seconds=args.max_green,
+        force_hold_steps=args.force_hold_steps,
+    )
     print(f"RL agent:    {rl_result}")
 
     if fixed_result["cleared"] and rl_result["cleared"]:

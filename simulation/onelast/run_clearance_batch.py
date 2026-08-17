@@ -91,7 +91,7 @@ def run_batch(net_path: str, model_path: str, out_csv: str):
             fixed_result = {"clearance_time": None, "steps": None, "cleared": False}
 
         try:
-            rl_result = run_rl_clearance(net_path, rou_path, model_path, max_green_seconds=44)
+            rl_result = run_rl_clearance(net_path, rou_path, model_path, max_green_seconds=30)
         except Exception as ex:
             import traceback
             traceback.print_exc()
@@ -156,7 +156,7 @@ def run_batch(net_path: str, model_path: str, out_csv: str):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--net", default="onelast.net.xml")
+    p.add_argument("--net", default="simulation/onelast/onelast.net.xml")
     p.add_argument("--model", default="../../rl_agent/models/ppo_onelast_v2.zip")
     p.add_argument("--out", default="clearance_batch_results_v2.csv")
     args = p.parse_args()
