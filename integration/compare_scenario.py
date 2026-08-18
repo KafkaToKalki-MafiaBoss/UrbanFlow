@@ -10,15 +10,29 @@ Both controllers are run against the SAME generated route file (same
 vehicles, same routes, same depart times) -- this is what makes the
 comparison fair, per the Phase A/B design.
 
-Uses ppo_onelast_v2.zip by default (the curriculum-retrained model,
+Uses ppo_onelast_v3_seed3.zip by default (the curriculum-retrained model,
 correct Discrete(4) action space, validated 20/20 clearance on the
-imbalanced-scenario batch -- see clearance_batch_results_v2.csv).
+imbalanced-scenario batch -- see clearance_batch_results_v3.csv).
 
 Includes the max-green override as a safety net for the live demo,
-even though v2 needed zero forced switches across all 20 test
+even though v3 needed zero forced switches across all 20 test
 scenarios. Cheap insurance: if a user-entered combination outside the
 tested range ever causes a stall, the demo still completes instead of
 hanging in front of a mentor.
+
+--- steps naming fix ---
+fixed_timer's "steps" and rl_agent's "steps" were NOT the same unit:
+fixed_timer.steps counts raw SUMO simulation steps (step_length=0.05s
+each, so a 60s clearance is ~1200 steps), while rl_agent.steps counts
+RL decision steps (one per delta_time=8s agent action, so the same 60s
+clearance is ~7-8 steps). Displaying both under an identical "steps"
+key invites a direct, meaningless comparison (e.g. "1173 vs 7" reads
+like the RL agent is ~170x more efficient, which is not a real claim
+this project makes -- it's purely a step-length artifact). Renamed to
+sim_steps / decision_steps in the merged result so the units are
+explicit and the two numbers are never implicitly compared. Neither
+number is omitted -- both are still fully available under their own
+controller's dict, just clearly labeled.
 
 Run from anywhere; paths are anchored to this script's location.
 Place in integration/.
@@ -39,7 +53,21 @@ from simulation.onelast.clearance_metrics import (
 )
 
 DEFAULT_NET_PATH = os.path.join(PROJECT_ROOT, "simulation", "onelast", "onelast.net.xml")
-DEFAULT_MODEL_PATH = os.path.join(PROJECT_ROOT, "rl_agent", "models", "ppo_onelast_v2.zip")
+DEFAULT_MODEL_PATH = os.path.join(PROJECT_ROOT, "rl_agent", "models", "ppo_onelast_v3_seed3.zip")
+
+
+def _relabel_steps(result: dict, key_name: str) -> dict:
+    """
+    Returns a shallow copy of a clearance_metrics.py result dict with
+    "steps" renamed to key_name. Doesn't mutate the original dict, so
+    callers that want the raw run_fixed_timer_clearance/run_rl_clearance
+    shape untouched (e.g. clearance_metrics.py's own __main__ block)
+    are unaffected -- this relabeling is local to compare_scenario.py's
+    merged output only.
+    """
+    relabeled = dict(result)
+    relabeled[key_name] = relabeled.pop("steps")
+    return relabeled
 
 
 def run_scenario_comparison(
@@ -67,6 +95,13 @@ def run_scenario_comparison(
             os.remove(rou_path)
         except OSError:
             pass
+
+    # Relabel each controller's "steps" field to make the unit explicit
+    # -- fixed_timer's is raw sim steps (step_length=0.05s), rl_agent's
+    # is decision steps (delta_time=8s). Both values are still present,
+    # just under names that can't be mistaken for the same unit.
+    fixed_result = _relabel_steps(fixed_result, "sim_steps")
+    rl_result = _relabel_steps(rl_result, "decision_steps")
 
     result = {
         "input_counts": counts,

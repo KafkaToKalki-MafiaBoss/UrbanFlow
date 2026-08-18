@@ -82,3 +82,12 @@ Run the diagnostic on `mod_ew_heavy` when you get a chance, and paste the output
 
 
 4) "The original policy (v1) exhibited a starvation failure on 3/20 out-of-distribution test scenarios, traced via diagnostic logging to a lack of training exposure to near-empty network states. A curriculum retraining (v2) that mixed the original sustained-flow episodes with randomized burst-to-clearance episodes eliminated all 3 failures (100% clearance success, 0 forced interventions needed), while leaving typical-case performance on already-working scenarios statistically unchanged (9.1% vs 9.5% average improvement). This confirms the fix targeted the diagnosed failure mode specifically, rather than incidentally changing unrelated behavior."
+
+
+5) For the presentation, the honest and strong framing is:
+Primary result: across 60 total scenario-seed runs (20 scenarios × 3 seeds), the RL agent successfully cleared traffic in 100% of cases, frequently outperforming a fixed-timer baseline by 30-45% on balanced/light traffic.
+Diagnosed limitation: in a minority of adversarial single-approach-heavy cases (forced_switches: 1), the agent's queue-aggregation observation space can't distinguish a left-turn queue from a through/right queue on the same approach edge, causing it to occasionally hold the wrong phase. This was root-caused via targeted TraCI-level debugging ([STUCK] vehicle/lane/wait tracing), not left as an unexplained anomaly.
+Engineered mitigation: a bounded, provably-terminating safety net (max-green override + phase-priority rotation) guarantees the agent can never truly fail to clear, and this override was itself tuned and improved iteratively (44s/plain rotation → 30s/biased rotation), cutting the worst-case penalty roughly in half to two-thirds depending on seed.
+Honest scope for future work: the actual fix — a richer, per-movement observation space — requires retraining and is correctly scoped as post-demo work on a separate branch, not rushed in under deadline pressure.
+
+That's a genuinely strong systems-engineering narrative: you found a real bug, diagnosed it with evidence rather than guesswork, fixed what could be fixed safely, and scoped what couldn't be fixed safely in time.

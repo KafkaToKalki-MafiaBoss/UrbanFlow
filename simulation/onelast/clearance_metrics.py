@@ -65,6 +65,40 @@ visits a genuinely different phase than the last override did, and
 within at most n_actions trigger cycles every phase (including the one
 the policy keeps avoiding) gets a real, held green window.
 
+--- Biased rotation-order fix (added after tuning max_green_seconds/
+    force_hold_steps down to 30/2 revealed the plain rotation_cursor is
+    slower than necessary) ---
+The 20-scenario batch showed a 100% correlation between forced_switches:1
+and RL-slower-than-fixed-timer cases. Every stuck vehicle logged via
+[STUCK] was on a through/right movement (never a left), and the policy
+almost always fixates on action=2, the protected-left phase, whenever
+E/W has any nonzero queue -- root cause is FourApproachQueueObservation
+aggregating by approach edge, so the policy can't distinguish a
+left-turn queue from a through/right queue on the same edge. The plain
+independent rotation_cursor (0->1->2->3->0...) still eventually reaches
+the correct phase, but on average wastes extra trigger cycles getting
+there depending on where the cursor happens to be sitting when the
+override first fires.
+
+ROTATION_ORDER replaces the flat cursor with a per-stuck-action lookup:
+whichever action the POLICY was actually trying to hold (not necessarily
+what we last forced) picks a specific first guess -- for action=2 this
+is action=1, since that's the observed common case (through/right
+starved while the policy fixates on the protected-left phase) -- and
+the remaining phases follow in a fixed order after that, so a full
+cycle of all n_actions - 1 alternative phases still completes before
+repeating. This does not weaken the starvation guarantee: every phase
+is still visited within one full cycle, it's just reordered so the
+statistically common fix comes first instead of last.
+
+Progress through a stuck-action's rotation list is tracked in
+rotation_progress, keyed by the action the policy was fixated on
+(policy_last_action) rather than by whatever action we most recently
+forced -- so if the policy keeps re-picking the same stubborn action
+after each hold ends, subsequent overrides continue advancing through
+THAT action's order instead of restarting or drifting onto an unrelated
+sequence.
+
 min_green is intentionally left untouched at the trained value (5s) --
 changing it would introduce a second, new distribution shift on top of
 the one already being corrected, and it wasn't implicated in the
@@ -95,11 +129,35 @@ DEFAULT_MAX_GREEN_SECONDS = 30
 
 # How many consecutive decisions the override HOLDS the corrective phase
 # for once triggered, before handing control back to the policy. At
-# delta_time=8s, 3 steps ~= 24s of held green (minus yellow overhead),
+# delta_time=8s, 2 steps ~= 16s of held green (minus yellow overhead),
 # enough for a starved approach-lane vehicle to actually depart instead
 # of getting bumped back onto the phase that stranded it after just one
 # 8s window. Tune upward if a scenario still freezes with this in place.
 FORCE_HOLD_STEPS = 2
+
+# Per-stuck-action rotation order. Key = the action the POLICY was
+# fixated on (policy_last_action); value = the order in which the
+# override tries the OTHER n_actions - 1 phases before repeating.
+#
+# First entry per key is a biased guess based on observed [STUCK] data
+# (action=2 -> try action=1 first, since that's the phase most often
+# actually needed). Remaining entries fill out the rest of the cycle in
+# a fixed, deterministic order so every phase is still guaranteed to be
+# visited within one full pass -- this only changes WHICH phase gets
+# tried first, not whether every phase eventually gets tried.
+#
+# General construction for n_actions=4, stuck action s:
+#   order[0] = (s - 1) % 4
+#   order[1] = (s + 1) % 4
+#   order[2] = (s + 2) % 4
+# (s itself is excluded since forcing the action the policy is already
+# stuck on wouldn't be a "switch" at all.)
+ROTATION_ORDER = {
+    0: [3, 1, 2],
+    1: [0, 2, 3],
+    2: [1, 3, 0],
+    3: [2, 0, 1],
+}
 
 
 def run_fixed_timer_clearance(
@@ -184,7 +242,7 @@ def run_rl_clearance(
     env = SumoEnvironment(
         net_file=net_path,
         route_file=rou_path,
-        use_gui=True,
+        use_gui=show_rl_gui,
         additional_sumo_cmd="--delay 150",
         num_seconds=int(max_sim_seconds),
         delta_time=delta_time,
@@ -205,12 +263,17 @@ def run_rl_clearance(
     last_action = None
     time_in_phase = 0.0
     force_hold_remaining = 0
-    # Independent of last_action/the policy's own choices -- this is
-    # what makes successive overrides actually progress through every
-    # phase instead of bouncing between whichever two actions the
-    # policy and the old (last_action + 1) % n_actions logic kept
-    # landing on together.
-    rotation_cursor = 0
+
+    # Tracks what the POLICY itself last predicted, updated only in the
+    # model.predict() branch below -- this is what ROTATION_ORDER keys
+    # off, since it represents what the policy is actually fixated on,
+    # independent of whatever the override has been forcing.
+    policy_last_action = None
+
+    # Per-stuck-action progress through ROTATION_ORDER[stuck_action].
+    # -1 means "not started yet" for that key so the first trigger for
+    # a given stuck action lands on index 0 (the biased first guess).
+    rotation_progress = {}
 
     try:
         while True:
@@ -229,22 +292,30 @@ def run_rl_clearance(
             ):
                 # Confirmed via check_action_space.py: action_space is
                 # Discrete(4), NOT Discrete(2) (4 green phases including
-                # 2 protected-left phases). "1 - last_action" was wrong
-                # and could emit an invalid action once last_action was
-                # 2 or 3.
+                # 2 protected-left phases).
                 #
-                # Previously cycled via (last_action + 1) % n_actions,
-                # but that resets every time from whatever the policy
-                # picked in between overrides -- if the policy always
-                # re-picks the same action (observed: action=2), every
-                # override computes the same next phase and the true
-                # rotation never progresses past two alternating phases.
-                # rotation_cursor tracks progress independently so each
-                # trigger visits a genuinely new phase, guaranteeing
-                # every phase gets served within n_actions triggers.
+                # Bias the rotation using ROTATION_ORDER, keyed by what
+                # the policy itself was actually fixated on
+                # (policy_last_action) rather than last_action (which
+                # may just be whatever we last forced). Progress through
+                # that action's order is tracked independently so a full
+                # cycle of every other phase still completes before
+                # repeating -- this only reorders which phase gets tried
+                # first, it doesn't skip any.
                 n_actions = env.action_space.n
-                rotation_cursor = (rotation_cursor + 1) % n_actions
-                action = rotation_cursor
+                stuck_action = policy_last_action if policy_last_action is not None else last_action
+                order = ROTATION_ORDER.get(stuck_action)
+                if order is None:
+                    # Fallback for any action not in the lookup (e.g. if
+                    # n_actions ever changes): plain independent rotation.
+                    order = [a for a in range(n_actions) if a != stuck_action]
+
+                idx = rotation_progress.get(stuck_action, -1) + 1
+                if idx >= len(order):
+                    idx = 0  # full cycle completed for this stuck action, start over
+                rotation_progress[stuck_action] = idx
+
+                action = order[idx]
                 forced_switches += 1
                 force_hold_remaining = force_hold_steps - 1
 
@@ -264,6 +335,7 @@ def run_rl_clearance(
             else:
                 predicted, _ = model.predict(obs, deterministic=True)
                 action = int(predicted)
+                policy_last_action = action
                 print(f"[DEBUG] step={steps} obs={obs} action={action}")
 
             obs, reward, terminated, truncated, info = env.step(action)
